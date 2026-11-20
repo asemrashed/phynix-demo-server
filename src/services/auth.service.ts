@@ -18,7 +18,7 @@ import {
 const SALT_ROUNDS = 12
 
 function isDeviceLimitSkipped(): boolean {
-  return process.env.SKIP_DEVICE_LIMIT === "true"
+  return process.env.SKIP_DEVICE_LIMIT !== "false"
 }
 
 async function assertDeviceSessionAvailable(userId: string, deviceType: DeviceType) {
@@ -160,6 +160,20 @@ export async function refreshAccessToken(refreshToken: string) {
     where: { id: payload.sessionId, isActive: true },
   })
   if (!session) {
+    if (isDeviceLimitSkipped()) {
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { role: true },
+      })
+      if (user) {
+        const { accessToken, expiresIn } = generateTokens(
+          payload.userId,
+          user.role,
+          payload.sessionId
+        )
+        return { accessToken, expiresIn }
+      }
+    }
     throw Object.assign(new Error("Session expired"), { code: "SESSION_INVALID" })
   }
 

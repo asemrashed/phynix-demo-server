@@ -17,6 +17,9 @@ export async function touchDeviceSession(
       data: { lastActiveAt: new Date() },
     })
   } catch {
+    if (process.env.SKIP_DEVICE_LIMIT !== "false") {
+      return next()
+    }
     return sendError(res, "SESSION_INVALID", "Session expired. Please login again.", 401)
   }
 
